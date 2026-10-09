@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Route Finder - Sandip University</title>
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+
+    .container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 950px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 820px) {
+      .container {
+        grid-template-columns: 1fr;
+        padding: 1.25rem;
+      }
+    }
+
+    .controls h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--text-main);
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background-color: #f8fafc;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      width: 100%;
+      background-color: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 0.85rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .result-box {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: #f0f9ff;
+      border-left: 4px solid var(--primary);
+      border-radius: 6px;
+      display: none;
+    }
+
+    .result-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .result-dist {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .result-path {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #0369a1;
+      line-height: 1.4;
+    }
+
+    .map-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    canvas {
+      width: 100%;
+      max-width: 520px;
+      height: 440px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="controls">
+      <h2>campus shortest path finder( sandip University)</h2>
+
+      <div class="form-group">
+        <label for="startSelect">Starting Location:</label>
+        <select id="startSelect"></select>
+      </div>
+
+      <div class="form-group">
+        <label for="endSelect">Destination:</label>
+        <select id="endSelect"></select>
+      </div>
+
+      <button onclick="runRouteFinder()">Find Route</button>
+
+      <div class="result-box" id="resultBox">
+        <div class="result-title">Shortest Distance</div>
+        <div class="result-dist" id="distDisplay">0 m</div>
+        <div class="result-title">Optimized Path</div>
+        <div class="result-path" id="pathDisplay"></div>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <canvas id="campusCanvas" width="520" height="440"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // 2D Campus Coordinates for Sandip University layout (520x440 viewport)
+    const nodes = {
+      "University Gate": { x: 70, y: 80 },
+      "S Building": { x: 130, y: 150 },
+      "O Building": { x: 210, y: 70 },
+      "Girls Hostel": { x: 270, y: 140 },
+      "Boys Hostel": { x: 370, y: 80 },
+      "Sports Complex": { x: 390, y: 35 },
+      "Football Ground": { x: 440, y: 190 },
+      "Olive Canteen": { x: 220, y: 210 },
+      "C Building": { x: 210, y: 270 },
+      "Saffron Canteen": { x: 350, y: 210 },
+      "Calic Canteen": { x: 360, y: 280 },
+      "SIEM": { x: 440, y: 300 },
+      "Foundation Gate": { x: 110, y: 330 },
+      "Polytechnic": { x: 410, y: 370 },
+      "Y Building": { x: 450, y: 415 }
+    };
+
+    // Graph network with path distances in meters
+    const graph = {
+      "University Gate": { "S Building": 90, "O Building": 120 },
+      "S Building": { "University Gate": 90, "Girls Hostel": 110, "Olive Canteen": 130 },
+      "O Building": { "University Gate": 120, "Girls Hostel": 90, "Boys Hostel": 140 },
+      "Boys Hostel": { "O Building": 140, "Sports Complex": 60, "Football Ground": 120 },
+      "Sports Complex": { "Boys Hostel": 60 },
+      "Girls Hostel": { "S Building": 110, "O Building": 90, "Olive Canteen": 80 },
+      "Olive Canteen": { "Girls Hostel": 80, "S Building": 130, "C Building": 90, "Saffron Canteen": 110 },
+      "C Building": { "Olive Canteen": 90, "Foundation Gate": 100, "Calic Canteen": 130 },
+      "Saffron Canteen": { "Olive Canteen": 110, "Football Ground": 80, "Calic Canteen": 60 },
+      "Calic Canteen": { "Saffron Canteen": 60, "C Building": 130, "SIEM": 70 },
+      "Football Ground": { "Boys Hostel": 120, "Saffron Canteen": 80, "SIEM": 110 },
+      "SIEM": { "Football Ground": 110, "Calic Canteen": 70, "Polytechnic": 90, "Foundation Gate": 200 },
+      "Foundation Gate": { "C Building": 100, "SIEM": 200, "Polytechnic": 210 },
+      "Polytechnic": { "SIEM": 90, "Foundation Gate": 210, "Y Building": 70 },
+      "Y Building": { "Polytechnic": 70 }
+    };
+
+    const canvas = document.getElementById("campusCanvas");
+    const ctx = canvas.getContext("2d");
+    const startSelect = document.getElementById("startSelect");
+    const endSelect = document.getElementById("endSelect");
+
+    // Populate building options
+    Object.keys(nodes).forEach(node => {
+      startSelect.add(new Option(node, node));
+      endSelect.add(new Option(node, node));
+    });
+    startSelect.value = "University Gate";
+    endSelect.value = "Football Ground";
+
+    // Dijkstra's Shortest Path Algorithm
+    function dijkstra(start, destination) {
+      const distances = {};
+      const previous = {};
+      const unvisited = new Set(Object.keys(graph));
+
+      for (const node of unvisited) distances[node] = Infinity;
+      distances[start] = 0;
+
+      while (unvisited.size > 0) {
+        let currNode = null;
+        for (const node of unvisited) {
+          if (currNode === null || distances[node] < distances[currNode]) {
+            currNode = node;
+          }
+        }
+
+        if (distances[currNode] === Infinity || currNode === destination) break;
+        unvisited.delete(currNode);
+
+        for (const neighbor in graph[currNode]) {
+          const dist = distances[currNode] + graph[currNode][neighbor];
+          if (dist < distances[neighbor]) {
+            distances[neighbor] = dist;
+            previous[neighbor] = currNode;
+          }
+        }
+      }
+
+      const path = [];
+      let step = destination;
+      while (step) {
+        path.unshift(step);
+        step = previous[step];
+      }
+
+      return { path: path[0] === start ? path : [], distance: distances[destination] };
+    }
+
+    // Canvas drawing function for light mode
+    function drawMap(highlightedPath = []) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const drawnEdges = new Set();
+
+      // 1. Draw base connection lines and distance tags
+      for (const node in graph) {
+        const from = nodes[node];
+        for (const neighbor in graph[node]) {
+          const edgeId = [node, neighbor].sort().join("<->");
+          if (!drawnEdges.has(edgeId)) {
+            drawnEdges.add(edgeId);
+            const to = nodes[neighbor];
+
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Distance labels
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
+            ctx.font = "9px system-ui, sans-serif";
+            ctx.fillStyle = "#94a3b8";
+            ctx.textAlign = "center";
+            ctx.fillText(graph[node][neighbor] + "m", midX, midY - 4);
+          }
+        }
+      }
+
+      // 2. Draw highlighted route
+      if (highlightedPath.length > 1) {
+        ctx.strokeStyle = "#0284c7";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for (let i = 0; i < highlightedPath.length - 1; i++) {
+          const from = nodes[highlightedPath[i]];
+          const to = nodes[highlightedPath[i + 1]];
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+        }
+        ctx.stroke();
+      }
+
+      // 3. Draw Nodes and Labels
+      for (const node in nodes) {
+        const { x, y } = nodes[node];
+        const isStart = highlightedPath.length > 0 && highlightedPath[0] === node;
+        const isEnd = highlightedPath.length > 0 && highlightedPath[highlightedPath.length - 1] === node;
+        const isInPath = highlightedPath.includes(node);
+
+        ctx.beginPath();
+        ctx.arc(x, y, isInPath ? 7 : 5, 0, 2 * Math.PI);
+        
+        if (isStart) ctx.fillStyle = "#10b981"; // Green for start
+        else if (isEnd) ctx.fillStyle = "#ef4444"; // Red for end
+        else if (isInPath) ctx.fillStyle = "#0284c7"; // Blue for path
+        else ctx.fillStyle = "#64748b"; // Neutral for unvisited
+        
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Node Text
+        ctx.font = isInPath ? "bold 11px system-ui, sans-serif" : "10px system-ui, sans-serif";
+        ctx.fillStyle = isInPath ? "#0f172a" : "#64748b";
+        ctx.textAlign = "center";
+        ctx.fillText(node, x, y - 10);
+      }
+    }
+
+    function runRouteFinder() {
+      const start = startSelect.value;
+      const end = endSelect.value;
+      const resultBox = document.getElementById("resultBox");
+
+      if (start === end) {
+        document.getElementById("distDisplay").textContent = "0 m";
+        document.getElementById("pathDisplay").textContent = "Start and destination are identical.";
+        resultBox.style.display = "block";
+        drawMap([start]);
+        return;
+      }
+
+      const { path, distance } = dijkstra(start, end);
+      document.getElementById("distDisplay").textContent = distance + " meters";
+      document.getElementById("pathDisplay").textContent = path.join("  ➜  ");
+      resultBox.style.display = "block";
+
+      drawMap(path);
+    }
+
+    // Initial render
+    runRouteFinder();
+  </script>
+</body>
+</html>
